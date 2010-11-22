@@ -15,3 +15,6 @@ bin/*
 develop-eggs/*
 parts/*
 eggs/*
+
+# keeping django source out of git
+src/django
