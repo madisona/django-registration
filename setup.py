@@ -10,5 +10,7 @@ setup(
     package_dir={'': 'src'},
     install_requires = (
 #        'django==1.2.3',
+        'unittest2',        # for tests
+        'mock',              # for tests
     ),
 )
