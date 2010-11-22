@@ -37,9 +37,7 @@ class RegistrationManagerTests(test.TestCase):
 
     def should_create_profile(self):
         profile = models.RegistrationProfile.objects._create_profile(self.user)
-
         self.assertEqual(1, models.RegistrationProfile.objects.all().count())
-        self.assertTrue(models.SHA1_RE.search(profile.activation_key))
 
     def should_get_new_inactive_user(self):
         user = models.RegistrationProfile.objects._get_new_inactive_user("adam", "secret", "adam@example.com")
@@ -128,7 +126,30 @@ class RegistrationManagerTests(test.TestCase):
             "message": get_message.return_value,
         }], send_mail.call_args)
 
-        
+    def should_return_false_if_activation_key_isnt_found(self):
+        user = models.RegistrationProfile.objects.activate_user("key")
+        self.assertEqual(user, False)
+
+    @patch("registration.models.RegistrationProfile.objects.get")
+    def should_return_false_if_activation_key_is_expired(self, get_mock):
+        get_mock.return_value.activation_key_expired.return_value = True
+
+        user = models.RegistrationProfile.objects.activate_user(Mock())
+        self.assertEqual(user, False)
+
+    def should_set_active_status_and_save(self):
+        user = Mock()
+        active_user = models.RegistrationProfile.objects._do_activate_user(user)
+
+        self.assertEqual(active_user.is_active, True)
+        self.assertTrue(user.save.called, "didnt save user")
+
+    def should_set_activation_key_and_save(self):
+        profile = Mock()
+        models.RegistrationProfile.objects._do_activate_profile(profile)
+
+        self.assertEqual(models.RegistrationProfile.ACTIVATED, profile.activation_key)
+        self.assertTrue(profile.save.called, "didnt save profile")
 
 
 

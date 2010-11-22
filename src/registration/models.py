@@ -1,9 +1,7 @@
 
 import datetime
 import random
-import re
 from hashlib import sha1
-
 
 from django.db import models
 from django.conf import settings
@@ -12,41 +10,43 @@ from django.template.loader import render_to_string
 from django.contrib.auth.models import User
 from django.contrib.sites.models import Site
 
-SHA1_RE = re.compile('^[a-f0-9]{40}$')
-
 class RegistrationManager(models.Manager):
     "Provides shortcuts to account creation and activation"
 
     activation_subject_template_name = "registration/activation_email_subject.txt"
     activation_template_name = "registration/activation_email.txt"
 
-#    def activate_user(self, activation_key):
-#        "returns user object if successful, otherwise returns false"
-#        if SHA1_RE.search(activation_key):
-#            try:
-#                profile = self.get(activation_key=activation_key)
-#            except self.model.DoesNotExist:
-#                return False
-#
-#            if not profile.activation_key_expired():
-#                user = profile.user
-#                user.is_active = True
-#                user.save()
-#                profile.activation_key = self.model.ACTIVATED
-#                profile.save()
-#                return user
-#        return False
-#
     def create_inactive_user(self, username, password, email, send_email=True, profile_callback=None):
         new_user = self._get_new_inactive_user(username, password, email)
         registration_profile = self._create_profile(new_user)
-        
+
         if profile_callback is not None:
             profile_callback(new_user)
 
         if send_email:
             self._send_activation_email(new_user, registration_profile)
         return new_user
+
+    def activate_user(self, activation_key):
+        "returns user object if successful, otherwise returns false"
+        try:
+            profile = self.get(activation_key=activation_key)
+        except self.model.DoesNotExist:
+            return False
+        if not profile.activation_key_expired():
+            active_user = self._do_activate_user(profile.user)
+            self._do_activate_profile(profile)
+            return active_user
+        return False
+
+    def _do_activate_user(self, user):
+        user.is_active = True
+        user.save()
+        return user
+
+    def _do_activate_profile(self, profile):
+        profile.activation_key = self.model.ACTIVATED
+        profile.save()
 
     def _get_new_inactive_user(self, username, password, email):
         new_user = User.objects.create_user(username, email, password)
@@ -90,4 +90,7 @@ class RegistrationProfile(models.Model):
 
     def __unicode__(self):
         return u"Registration information for %s" % self.user
+
+    def activation_key_expired(self):
+        pass
 
