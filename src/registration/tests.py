@@ -56,71 +56,11 @@ class RegistrationManagerTests(test.TestCase):
         self.assertEqual([(user,), {}], profile_callback.call_args)
 
     @patch("registration.models.RegistrationProfile.objects._create_profile")
-    @patch("registration.models.RegistrationProfile.objects._send_activation_email")
-    def should_send_email_if_requested_in_create_inactive_user(self, send_email, create_profile):
+    def should_send_email_if_requested_in_create_inactive_user(self, create_profile):
         user = models.RegistrationProfile.objects.create_inactive_user(
                 "adam", "secret", "adam@example.com", send_email=True)
 
-        self.assertEqual([(user, create_profile.return_value), {}], send_email.call_args)
-
-    @patch("registration.models.render_to_string")
-    def should_render_email_subject_to_string(self, render_to_string):
-        render_to_string.return_value = "Activation email"
-        site_mock = Mock()
-        subject = models.RegistrationProfile.objects._get_activation_subject(site_mock)
-        
-        self.assertEqual([(
-            models.RegistrationProfile.objects.activation_subject_template_name,
-            {'site': site_mock},
-        ), {}], render_to_string.call_args)
-        self.assertEqual(render_to_string.return_value, subject)
-
-    @patch("registration.models.render_to_string")
-    def should_force_email_subject_to_be_one_line(self, render_to_string):
-        render_to_string.return_value = "Activation \nemail"
-        subject = models.RegistrationProfile.objects._get_activation_subject(Mock)
-        self.assertEqual("Activation email", subject)
-
-    @patch("registration.models.settings")
-    @patch("registration.models.render_to_string")
-    def should_render_email_message_to_string(self, render_to_string, settings_mock):
-        activation_key = Mock()
-        current_site = Mock()
-        message = models.RegistrationProfile.objects._get_activation_message(activation_key, current_site)
-
-        self.assertEqual([(
-            models.RegistrationProfile.objects.activation_template_name, {
-                'site': current_site,
-                'activation_key': activation_key,
-                'expiration_days': settings_mock.ACCOUNT_ACTIVATION_DAYS,
-             },
-        ), {}], render_to_string.call_args)
-        self.assertEqual(render_to_string.return_value, message)
-
-    @patch("registration.models.RegistrationProfile.objects._get_activation_message")
-    @patch("registration.models.RegistrationProfile.objects._get_activation_subject")
-    @patch('django.contrib.sites.models.Site.objects.get_current')
-    def should_get_current_site_and_send_to_get_templates(self, get_current, get_subject, get_message):
-        user = Mock()
-        registration_profile = Mock()
-        models.RegistrationProfile.objects._send_activation_email(user, registration_profile)
-        self.assertEqual([(get_current.return_value,), {}], get_subject.call_args)
-        self.assertEqual([(registration_profile.activation_key, get_current.return_value), {}],
-                         get_message.call_args)
-
-    @patch("registration.models.RegistrationProfile.objects._get_activation_message")
-    @patch("registration.models.RegistrationProfile.objects._get_activation_subject")
-    @patch("registration.models.settings")
-    @patch('registration.models.send_mail')
-    def should_send_proper_arguments_to_send_mail_command(self, send_mail, settings_mock, get_subject, get_message):
-        user = Mock()
-        models.RegistrationProfile.objects._send_activation_email(user, Mock())
-        self.assertEqual([(), {
-            "from_email": settings_mock.DEFAULT_FROM_EMAIL,
-            "recipient_list": [user.email],
-            "subject": get_subject.return_value,
-            "message": get_message.return_value,
-        }], send_mail.call_args)
+        self.assertTrue(create_profile.return_value.send_activation_email.called)
 
     def should_return_false_if_activation_key_isnt_found(self):
         user = models.RegistrationProfile.objects.activate_user("key")
@@ -193,5 +133,58 @@ class RegistrationProfileModelTests(test.TestCase):
         profile.activation_key = models.RegistrationProfile.ACTIVATED
         self.assertTrue(profile.activation_key_expired())
 
+    @patch("registration.models.RegistrationProfile._get_activation_message")
+    @patch("registration.models.RegistrationProfile._get_activation_subject")
+    @patch('django.contrib.sites.models.Site.objects.get_current')
+    def should_get_current_site_and_send_to_get_templates(self, get_current, get_subject, get_message):
+        registration_profile = models.RegistrationProfile(user=self.sample_user)
+        registration_profile.send_activation_email()
+        self.assertEqual([(get_current.return_value,), {}], get_subject.call_args)
+        self.assertEqual([(get_current.return_value,), {}], get_message.call_args)
 
+    @patch('registration.models.User.email_user', Mock())
+    @patch("registration.models.RegistrationProfile._get_activation_message")
+    @patch("registration.models.RegistrationProfile._get_activation_subject")
+    @patch("registration.models.settings")
+    def should_send_proper_arguments_to_send_mail_command(self, settings_mock, get_subject, get_message):
+        registration_profile = models.RegistrationProfile(user=self.sample_user)
+        registration_profile.send_activation_email()
+        self.assertEqual([(
+            get_subject.return_value,
+            get_message.return_value,
+            settings_mock.DEFAULT_FROM_EMAIL,
+        ), {}], registration_profile.user.email_user.call_args)
 
+    @patch("registration.models.render_to_string")
+    def should_render_email_subject_to_string(self, render_to_string):
+        render_to_string.return_value = "Activation email"
+        site_mock = Mock()
+        subject = models.RegistrationProfile()._get_activation_subject(site_mock)
+
+        self.assertEqual([(
+            models.RegistrationProfile.activation_subject_template_name,
+            {'site': site_mock},
+        ), {}], render_to_string.call_args)
+        self.assertEqual(render_to_string.return_value, subject)
+
+    @patch("registration.models.render_to_string")
+    def should_force_email_subject_to_be_one_line(self, render_to_string):
+        render_to_string.return_value = "Activation \nemail"
+        subject = models.RegistrationProfile()._get_activation_subject(Mock)
+        self.assertEqual("Activation email", subject)
+
+    @patch("registration.models.settings")
+    @patch("registration.models.render_to_string")
+    def should_render_email_message_to_string(self, render_to_string, settings_mock):
+        profile = models.RegistrationProfile(activation_key=Mock())
+        current_site = Mock()
+        message = profile._get_activation_message(current_site)
+
+        self.assertEqual([(
+            models.RegistrationProfile.activation_template_name, {
+                'site': current_site,
+                'activation_key': profile.activation_key,
+                'expiration_days': settings_mock.ACCOUNT_ACTIVATION_DAYS,
+             },
+        ), {}], render_to_string.call_args)
+        self.assertEqual(render_to_string.return_value, message)

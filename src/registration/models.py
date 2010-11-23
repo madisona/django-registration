@@ -14,9 +14,6 @@ from django.contrib.sites.models import Site
 class RegistrationManager(models.Manager):
     "Provides shortcuts to account creation and activation"
 
-    activation_subject_template_name = "registration/activation_email_subject.txt"
-    activation_template_name = "registration/activation_email.txt"
-
     @transaction.commit_on_success
     def create_inactive_user(self, username, password, email, send_email=True, profile_callback=None):
         new_user = self._get_new_inactive_user(username, password, email)
@@ -26,7 +23,7 @@ class RegistrationManager(models.Manager):
             profile_callback(new_user)
 
         if send_email:
-            self._send_activation_email(new_user, registration_profile)
+            registration_profile.send_activation_email()
         return new_user
 
     def activate_user(self, activation_key):
@@ -61,29 +58,10 @@ class RegistrationManager(models.Manager):
         activation_key = sha1(salt + user.username).hexdigest()
         return self.create(user=user, activation_key=activation_key)
 
-    def _get_activation_subject(self, site):
-        subject = render_to_string(self.activation_subject_template_name, {'site': site})
-        return ''.join(subject.splitlines())
-
-    def _get_activation_message(self, activation_key, site):
-        return render_to_string(self.activation_template_name, {
-            'site': site,
-            'activation_key': activation_key,
-            'expiration_days': settings.ACCOUNT_ACTIVATION_DAYS,
-        })
-
-    def _send_activation_email(self, user, registration_profile):
-        current_site = Site.objects.get_current()
-        send_mail(
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[user.email],
-            subject=self._get_activation_subject(current_site),
-            message=self._get_activation_message(registration_profile.activation_key, current_site),
-        )
-
-
 class RegistrationProfile(models.Model):
     ACTIVATED = u"ALREADY_ACTIVATED"
+    activation_subject_template_name = "registration/activation_email_subject.txt"
+    activation_template_name = "registration/activation_email.txt"
 
     user = models.ForeignKey(User, unique=True)
     activation_key = models.CharField(max_length=40)
@@ -98,4 +76,20 @@ class RegistrationProfile(models.Model):
         return self.activation_key == self.ACTIVATED or \
                (self.user.date_joined + expiration_date <= datetime.datetime.now())
 
+    def send_activation_email(self):
+        current_site = Site.objects.get_current()
+        subject = self._get_activation_subject(current_site)
+        message = self._get_activation_message(current_site)
 
+        self.user.email_user(subject, message, settings.DEFAULT_FROM_EMAIL)
+
+    def _get_activation_subject(self, site):
+        subject = render_to_string(self.activation_subject_template_name, {'site': site})
+        return ''.join(subject.splitlines())
+
+    def _get_activation_message(self, site):
+        return render_to_string(self.activation_template_name, {
+            'site': site,
+            'activation_key': self.activation_key,
+            'expiration_days': settings.ACCOUNT_ACTIVATION_DAYS,
+        })
