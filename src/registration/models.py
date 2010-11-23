@@ -4,6 +4,7 @@ import random
 from hashlib import sha1
 
 from django.db import models
+from django.db import transaction
 from django.conf import settings
 from django.core.mail import send_mail
 from django.template.loader import render_to_string
@@ -16,6 +17,7 @@ class RegistrationManager(models.Manager):
     activation_subject_template_name = "registration/activation_email_subject.txt"
     activation_template_name = "registration/activation_email.txt"
 
+    @transaction.commit_on_success
     def create_inactive_user(self, username, password, email, send_email=True, profile_callback=None):
         new_user = self._get_new_inactive_user(username, password, email)
         registration_profile = self._create_profile(new_user)
@@ -92,5 +94,8 @@ class RegistrationProfile(models.Model):
         return u"Registration information for %s" % self.user
 
     def activation_key_expired(self):
-        pass
+        expiration_date = datetime.timedelta(days=settings.ACCOUNT_ACTIVATION_DAYS)
+        return self.activation_key == self.ACTIVATED or \
+               (self.user.date_joined + expiration_date <= datetime.datetime.now())
+
 

@@ -24,11 +24,7 @@ from registration import models
 #        self.expired_user.date_joined -= datetime.timedelta(days=settings.ACCOUNT_ACTIVATION_DAYS + 1)
 #        self.expired_user.save()
 #
-#class RegistrationProfileModelTests(RegistrationTestCase):
-#
-#    def should_use_user_in_string_representation(self):
-#        profile = models.RegistrationProfile.objects.create(user=self.sample_user)
-#        self.assertTrue(str(self.sample_user) in str(profile))
+
 
 class RegistrationManagerTests(test.TestCase):
 
@@ -150,6 +146,52 @@ class RegistrationManagerTests(test.TestCase):
 
         self.assertEqual(models.RegistrationProfile.ACTIVATED, profile.activation_key)
         self.assertTrue(profile.save.called, "didnt save profile")
+
+    @patch("registration.models.RegistrationProfile.objects._do_activate_user")
+    @patch("registration.models.RegistrationProfile.objects._do_activate_profile")
+    @patch("registration.models.RegistrationProfile.objects.get")
+    def should_activate_and_return_user(self, get_mock, do_activate_profile, do_activate_user):
+        profile = get_mock.return_value
+        profile.activation_key_expired.return_value = False
+
+        active_user = models.RegistrationProfile.objects.activate_user(Mock())
+        self.assertEqual([(profile.user,), {}], do_activate_user.call_args)
+        self.assertEqual([(profile,), {}], do_activate_profile.call_args)
+        self.assertEqual(do_activate_user.return_value, active_user)
+
+class RegistrationProfileModelTests(test.TestCase):
+
+    def setUp(self):
+        self.sample_user = models.RegistrationProfile.objects.create_inactive_user(
+            username="alice",
+            password="secret",
+            email="alice@example.com"
+        )
+        self.expired_user = models.RegistrationProfile.objects.create_inactive_user(
+            username="bob",
+            password="secret",
+            email="bob@example.com"
+        )
+        self.expired_user.date_joined -= datetime.timedelta(days=settings.ACCOUNT_ACTIVATION_DAYS + 1)
+        self.expired_user.save()
+
+    def should_use_user_in_string_representation(self):
+        user = User.objects.create_user("aaron", "secret", "aaron@example.com")
+        profile = models.RegistrationProfile(user=user)
+        self.assertTrue(str(user) in str(profile))
+
+    def should_not_be_expired_if_expiration_date_has_not_passed(self):
+        profile = models.RegistrationProfile.objects.get(user=self.sample_user)
+        self.assertFalse(profile.activation_key_expired())
+
+    def should_be_expired_if_expiration_date_has_passed(self):
+        profile = models.RegistrationProfile.objects.get(user=self.expired_user)
+        self.assertTrue(profile.activation_key_expired())
+
+    def should_be_expired_if_already_activated(self):
+        profile = models.RegistrationProfile.objects.get(user=self.sample_user)
+        profile.activation_key = models.RegistrationProfile.ACTIVATED
+        self.assertTrue(profile.activation_key_expired())
 
 
 
