@@ -8,7 +8,7 @@ from django.contrib.auth.models import User
 
 from registration import models
 
-#class RegistrationTestCase(test.TestCase):
+#class BaseRegistrationTestCase(test.TestCase):
 #
 #    def setUp(self):
 #        self.sample_user = models.RegistrationProfile.objects.create_inactive_user(
@@ -98,6 +98,45 @@ class RegistrationManagerTests(test.TestCase):
         self.assertEqual([(profile.user,), {}], do_activate_user.call_args)
         self.assertEqual([(profile,), {}], do_activate_profile.call_args)
         self.assertEqual(do_activate_user.return_value, active_user)
+
+    @patch("registration.models.RegistrationProfile.objects.all")
+    def should_delete_expired_user_if_activation_key_is_expired_and_user_is_not_active(self, all_mock):
+        user = Mock()
+        user.is_active = False
+
+        profile = Mock()
+        profile.user = user
+        profile.activation_key_expired.return_value = True
+
+        all_mock.return_value = [profile]
+        models.RegistrationProfile.objects.delete_expired_users()
+        self.assertTrue(user.delete.called)
+
+    @patch("registration.models.RegistrationProfile.objects.all")
+    def should_not_delete_user_if_activation_key_has_not_expired(self, all_mock):
+        user = Mock()
+        user.is_active = False
+
+        profile = Mock()
+        profile.user = user
+        profile.activation_key_expired.return_value = False
+
+        all_mock.return_value = [profile]
+        models.RegistrationProfile.objects.delete_expired_users()
+        self.assertFalse(user.delete.called)
+
+    @patch("registration.models.RegistrationProfile.objects.all")
+    def should_not_delete_user_if_user_is_active(self, all_mock):
+        user = Mock()
+        user.is_active = True
+
+        profile = Mock()
+        profile.user = user
+        profile.activation_key_expired.return_value = True
+
+        all_mock.return_value = [profile]
+        models.RegistrationProfile.objects.delete_expired_users()
+        self.assertFalse(user.delete.called)
 
 class RegistrationProfileModelTests(test.TestCase):
 

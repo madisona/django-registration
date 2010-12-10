@@ -38,6 +38,13 @@ class RegistrationManager(models.Manager):
             return active_user
         return False
 
+    def delete_expired_users(self):
+        for profile in self.all():
+            if profile.activation_key_expired():
+                user = profile.user
+                if not user.is_active:
+                    user.delete()
+
     def _do_activate_user(self, user):
         user.is_active = True
         user.save()
@@ -57,6 +64,8 @@ class RegistrationManager(models.Manager):
         salt = sha1(str(random.random())).hexdigest()[:5]
         activation_key = sha1(salt + user.username).hexdigest()
         return self.create(user=user, activation_key=activation_key)
+
+
 
 class RegistrationProfile(models.Model):
     ACTIVATED = u"ALREADY_ACTIVATED"
