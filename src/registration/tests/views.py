@@ -1,4 +1,6 @@
 
+from mock import patch
+
 from django import test
 from django.core.urlresolvers import reverse
 
@@ -22,6 +24,19 @@ class RegisterTests(test.TestCase):
             'password2': 'secret',
         })
         self.assertRedirects(response, reverse("registration:registration_complete"))
+
+    @patch("registration.views.get_site")
+    @patch("registration.models.RegistrationProfile.objects")
+    def should_create_inactive_user_on_success(self, manager, get_site):
+        data = {
+            'username': 'alice',
+            'email': 'alice@example.com',
+            'password1': 'secret',
+            'password2': 'secret',
+        }
+        response = self.client.post(reverse("registration:register"), data)
+        self.assertEqual(((data['username'], data['password1'], data['email'], get_site.return_value), {}),
+                         manager.create_inactive_user.call_args)
 
 class RegistrationCompleteTests(test.TestCase):
 
