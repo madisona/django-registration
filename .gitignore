@@ -16,3 +16,5 @@ develop-eggs/*
 parts/*
 eggs/*
 
+# ignore project db
+project_db
