@@ -14,7 +14,7 @@ class Register(FormView):
     form_class = forms.RegistrationForm
     
     def get_success_url(self):
-        return reverse("registration:registration_complete")
+        return reverse("registration_complete")
 
     def form_valid(self, form):
         # activate user...
@@ -38,5 +38,5 @@ class Activate(TemplateView):
     def get(self, request, *args, **kwargs):
         new_user = models.RegistrationProfile.objects.activate_user(kwargs['activation_key'])
         if new_user:
-            return http.HttpResponseRedirect(reverse("registration:activation_complete"))
+            return http.HttpResponseRedirect(reverse("registration_activation_complete"))
         return super(Activate, self).get(request, *args, **kwargs)

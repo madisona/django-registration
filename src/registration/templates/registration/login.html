@@ -1,0 +1,8 @@
+<h1>Login</h1>
+<form action='' method='post'>{% csrf_token %}
+    {{ form.as_ul }}
+    <input type="submit" value="login" />
+</form>
+
+<p><a href="{% url auth_password_reset %}">Forgot your password?</a></p>
+<p>Don't have an account? <a href="{% url registration_register %}">Create one now!</a></p>
