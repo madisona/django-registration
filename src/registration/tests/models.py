@@ -8,23 +8,6 @@ from django.contrib.auth.models import User
 
 from registration import models
 
-#class BaseRegistrationTestCase(test.TestCase):
-#
-#    def setUp(self):
-#        self.sample_user = models.RegistrationProfile.objects.create_inactive_user(
-#            username="alice",
-#            password="secret",
-#            email="alice@example.com"
-#        )
-#        self.expired_user = models.RegistrationProfile.objects.create_inactive_user(
-#            username="bob",
-#            password="secret",
-#            email="bob@example.com"
-#        )
-#        self.expired_user.date_joined -= datetime.timedelta(days=settings.ACCOUNT_ACTIVATION_DAYS + 1)
-#        self.expired_user.save()
-#
-
 class RegistrationManagerTests(test.TestCase):
 
     def setUp(self):
