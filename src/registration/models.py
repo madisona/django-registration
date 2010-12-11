@@ -8,21 +8,18 @@ from django.db import transaction
 from django.conf import settings
 from django.template.loader import render_to_string
 from django.contrib.auth.models import User
-from django.contrib.sites.models import Site
 
 class RegistrationManager(models.Manager):
     "Provides shortcuts to account creation and activation"
 
     @transaction.commit_on_success
-    def create_inactive_user(self, username, password, email, send_email=True, profile_callback=None):
+    def create_inactive_user(self, username, password, email,
+                             site, send_email=True):
         new_user = self._get_new_inactive_user(username, password, email)
         registration_profile = self._create_profile(new_user)
 
-        if profile_callback is not None:
-            profile_callback(new_user)
-
         if send_email:
-            registration_profile.send_activation_email()
+            registration_profile.send_activation_email(site)
         return new_user
 
     def activate_user(self, activation_key):
@@ -84,8 +81,7 @@ class RegistrationProfile(models.Model):
         return self.activation_key == self.ACTIVATED or \
                (self.user.date_joined + expiration_date <= datetime.datetime.now())
 
-    def send_activation_email(self):
-        current_site = Site.objects.get_current()
+    def send_activation_email(self, current_site):
         subject = self._get_activation_subject(current_site)
         message = self._get_activation_message(current_site)
 

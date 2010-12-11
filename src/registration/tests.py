@@ -25,14 +25,13 @@ from registration import models
 #        self.expired_user.save()
 #
 
-
 class RegistrationManagerTests(test.TestCase):
 
     def setUp(self):
         self.user = User.objects.create_user("aaron", "secret", "aaron@example.com")
 
     def should_create_profile(self):
-        profile = models.RegistrationProfile.objects._create_profile(self.user)
+        models.RegistrationProfile.objects._create_profile(self.user)
         self.assertEqual(1, models.RegistrationProfile.objects.all().count())
 
     def should_get_new_inactive_user(self):
@@ -42,23 +41,16 @@ class RegistrationManagerTests(test.TestCase):
     @patch("registration.models.RegistrationProfile.objects._get_new_inactive_user")
     @patch("registration.models.RegistrationProfile.objects._create_profile")
     def should_create_user_and_profile(self, create_profile, get_new_inactive_user):
-        user = models.RegistrationProfile.objects.create_inactive_user("adam", "secret", "adam@example.com")
+        user = models.RegistrationProfile.objects.create_inactive_user("adam", "secret", "adam@example.com", Mock())
 
         self.assertTrue(get_new_inactive_user.called)
         self.assertEqual(user, get_new_inactive_user.return_value)
         self.assertEqual([(user,), {}], create_profile.call_args)
 
-    def should_call_profile_callback_with_user_if_it_is_given(self):
-        profile_callback = Mock()
-        user = models.RegistrationProfile.objects.create_inactive_user(
-                "adam", "secret", "adam@example.com", profile_callback = profile_callback)
-
-        self.assertEqual([(user,), {}], profile_callback.call_args)
-
     @patch("registration.models.RegistrationProfile.objects._create_profile")
     def should_send_email_if_requested_in_create_inactive_user(self, create_profile):
         user = models.RegistrationProfile.objects.create_inactive_user(
-                "adam", "secret", "adam@example.com", send_email=True)
+                "adam", "secret", "adam@example.com", Mock(), send_email=True)
 
         self.assertTrue(create_profile.return_value.send_activation_email.called)
 
@@ -142,14 +134,14 @@ class RegistrationProfileModelTests(test.TestCase):
 
     def setUp(self):
         self.sample_user = models.RegistrationProfile.objects.create_inactive_user(
-            username="alice",
-            password="secret",
-            email="alice@example.com"
+            "alice",
+            "secret",
+            "alice@example.com", Mock(),
         )
         self.expired_user = models.RegistrationProfile.objects.create_inactive_user(
-            username="bob",
-            password="secret",
-            email="bob@example.com"
+            "bob",
+            "secret",
+            "bob@example.com", Mock(),
         )
         self.expired_user.date_joined -= datetime.timedelta(days=settings.ACCOUNT_ACTIVATION_DAYS + 1)
         self.expired_user.save()
@@ -174,12 +166,12 @@ class RegistrationProfileModelTests(test.TestCase):
 
     @patch("registration.models.RegistrationProfile._get_activation_message")
     @patch("registration.models.RegistrationProfile._get_activation_subject")
-    @patch('django.contrib.sites.models.Site.objects.get_current')
-    def should_get_current_site_and_send_to_get_templates(self, get_current, get_subject, get_message):
+    def should_get_current_site_and_send_to_get_templates(self, get_subject, get_message):
         registration_profile = models.RegistrationProfile(user=self.sample_user)
-        registration_profile.send_activation_email()
-        self.assertEqual([(get_current.return_value,), {}], get_subject.call_args)
-        self.assertEqual([(get_current.return_value,), {}], get_message.call_args)
+        current_site = Mock()
+        registration_profile.send_activation_email(current_site)
+        self.assertEqual([(current_site,), {}], get_subject.call_args)
+        self.assertEqual([(current_site,), {}], get_message.call_args)
 
     @patch('registration.models.User.email_user', Mock())
     @patch("registration.models.RegistrationProfile._get_activation_message")
@@ -187,7 +179,7 @@ class RegistrationProfileModelTests(test.TestCase):
     @patch("registration.models.settings")
     def should_send_proper_arguments_to_send_mail_command(self, settings_mock, get_subject, get_message):
         registration_profile = models.RegistrationProfile(user=self.sample_user)
-        registration_profile.send_activation_email()
+        registration_profile.send_activation_email(Mock())
         self.assertEqual([(
             get_subject.return_value,
             get_message.return_value,
