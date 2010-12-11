@@ -1,5 +1,5 @@
 
-from mock import patch
+from mock import patch, Mock
 
 from django import test
 from django.core.urlresolvers import reverse
@@ -11,6 +11,10 @@ class RegisterTests(test.TestCase):
     def should_access_page_successfully(self):
         response = self.client.get(reverse("registration:register"))
         self.assertEqual(200, response.status_code)
+
+    def should_render_to_correct_template(self):
+        response = self.client.get(reverse("registration:register"))
+        self.assertTemplateUsed(response, "registration/register.html")
 
     def should_send_registration_form_to_template(self):
         response = self.client.get(reverse("registration:register"))
@@ -47,3 +51,18 @@ class RegistrationCompleteTests(test.TestCase):
     def should_render_to_correct_template(self):
         response = self.client.get(reverse("registration:registration_complete"))
         self.assertTemplateUsed(response, "registration/registration_complete.html")
+
+class ActivateTests(test.TestCase):
+
+    def should_access_page_successfully(self):
+        response = self.client.get(reverse("registration:activate", kwargs={'activation_key': '123'}))
+        self.assertEqual(200, response.status_code)
+
+    def should_show_activation_failed_template_when_key_not_valid(self):
+        response = self.client.get(reverse("registration:activate", kwargs={'activation_key': '123'}))
+        self.assertTemplateUsed(response, "registration/activation_failed.html")
+
+    @patch('registration.models.RegistrationProfile.objects.activate_user', Mock(return_value=True))
+    def should_redirect_to_complete_page_when_key_is_valid(self):
+        response = self.client.get(reverse("registration:activate", kwargs={'activation_key': '123'}))
+        self.assertRedirects(response, reverse("registration:activation_complete"))

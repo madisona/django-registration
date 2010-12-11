@@ -1,5 +1,6 @@
 # Create your views here.
 
+from django import http
 from django.views.generic import TemplateView
 from django.views.generic.edit import FormView
 from django.core.urlresolvers import reverse
@@ -27,3 +28,15 @@ class Register(FormView):
 
 class RegistrationComplete(TemplateView):
     template_name = 'registration/registration_complete.html'
+
+class ActivationComplete(TemplateView):
+    template_name = 'registration/activation_complete.html'
+
+class Activate(TemplateView):
+    template_name = 'registration/activation_failed.html'
+
+    def get(self, request, *args, **kwargs):
+        new_user = models.RegistrationProfile.objects.activate_user(kwargs['activation_key'])
+        if new_user:
+            return http.HttpResponseRedirect(reverse("registration:activation_complete"))
+        return super(Activate, self).get(request, *args, **kwargs)
