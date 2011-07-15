@@ -1,4 +1,3 @@
-# Create your views here.
 
 from django import http
 from django.views.generic import TemplateView
