@@ -16,5 +16,8 @@ develop-eggs/*
 parts/*
 eggs/*
 
-# ignore project db
-project_db
+build/*
+dist/*
+
+# sample project db
+example.db
