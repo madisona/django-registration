@@ -1,16 +1,8 @@
-1. Download the source
 
-2. Run python bootstrap.py -d
-   Note:
-     - The -d command tells bootstrap to use distribute, easy_install's 
-       successor
-     - If you want to run your project with a different version of python
-       than your default, specify that when you run the bootstrap command. 
-       IE: python2.4 bootstrap.py -d
+To use:
+download the source, start a new virtualenv
+pip install -e git+https://github.com/madisona/django-registration#egg=django-registration
 
-3. Run bin/buildout
-   Note: This will get all your project's dependencies listed in your 
-         setup.py file.
 
 I took James Bennett's django-registration as a starting point and have
 copied it almost completely. I'd recommend you use his version.
