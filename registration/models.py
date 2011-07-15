@@ -10,7 +10,7 @@ from django.template.loader import render_to_string
 from django.contrib.auth.models import User
 
 class RegistrationManager(models.Manager):
-    "Provides shortcuts to account creation and activation"
+    """Provides shortcuts to account creation and activation"""
 
     @transaction.commit_on_success
     def create_inactive_user(self, username, password, email,
@@ -23,7 +23,7 @@ class RegistrationManager(models.Manager):
         return new_user
 
     def activate_user(self, activation_key):
-        "returns user object if successful, otherwise returns false"
+        """returns user object if successful, otherwise returns false"""
         try:
             profile = self.get(activation_key=activation_key)
         except self.model.DoesNotExist:
