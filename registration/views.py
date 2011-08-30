@@ -13,6 +13,8 @@ class Register(FormView):
     form_class = forms.RegistrationForm
     
     def get_success_url(self):
+        if self.success_url:
+            return self.success_url
         return reverse("registration_complete")
 
     def form_valid(self, form):
