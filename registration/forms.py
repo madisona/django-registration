@@ -1,6 +1,6 @@
 
 from django import forms
-from django.contrib.admin.models import User
+from django.contrib.auth import get_user_model
 
 
 class RegistrationForm(forms.Form):
@@ -11,9 +11,11 @@ class RegistrationForm(forms.Form):
     password2 = forms.CharField(widget=forms.PasswordInput())
 
     def clean_username(self):
+        user_model = get_user_model()
         try:
-            user = User.objects.get(username__iexact=self.cleaned_data['username'])
-        except User.DoesNotExist:
+            username_lookup = "{}__iexact".format(user_model.USERNAME_FIELD)
+            _ = user_model.objects.get(**{username_lookup: self.cleaned_data['username']})
+        except user_model.DoesNotExist:
             return self.cleaned_data['username']
         raise forms.ValidationError("Username '%(username)s' is not available." % self.cleaned_data)
 

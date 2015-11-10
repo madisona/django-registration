@@ -13,7 +13,7 @@ from django.contrib.auth.models import User
 class RegistrationManager(models.Manager):
     """Provides shortcuts to account creation and activation"""
 
-    @transaction.commit_on_success
+    @transaction.atomic
     def create_inactive_user(self, username, password, email,
                              site, send_email=True):
         new_user = self._get_new_inactive_user(username, password, email)
@@ -68,7 +68,7 @@ class RegistrationProfile(models.Model):
     activation_subject_template_name = "registration/activation_email_subject.txt"
     activation_template_name = "registration/activation_email.txt"
 
-    user = models.ForeignKey(User, unique=True)
+    user = models.OneToOneField(settings.AUTH_USER_MODEL)
     activation_key = models.CharField(max_length=40)
 
     objects = RegistrationManager()

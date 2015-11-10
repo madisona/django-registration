@@ -1,6 +1,6 @@
 
 from django import test
-from django.contrib.admin.models import User
+from django.contrib.auth import get_user_model
 
 from registration import forms
 
@@ -8,7 +8,7 @@ from registration import forms
 class RegistrationFormTests(test.TestCase):
 
     def test_requires_username_to_be_unique(self):
-        User.objects.create_user("alice", "alice@example.com", "secret")
+        get_user_model().objects.create_user("alice", "alice@example.com", "secret")
         registration_form = forms.RegistrationForm({
             "username": "alice",
             "email": "alice@example.com",
