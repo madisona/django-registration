@@ -1,31 +1,15 @@
 #!/usr/bin/env python
+import os
 import sys
-from optparse import OptionParser
+
+import django
 from django.conf import settings
+from django.test.utils import get_runner
 
-if not settings.configured:
-    #load django settings from example project for tests
-    from example import settings as example_settings
-    settings.configure(**example_settings.__dict__)
-
-#This import must come after settings config
-from django.test.simple import run_tests
-
-def runtests(*test_args, **kwargs):
-    if 'south' in settings.INSTALLED_APPS:
-        from south.management.commands import patch_for_test_db_setup
-        patch_for_test_db_setup()
-
-    if not test_args:
-        test_args = ['registration']
-
-    failures = run_tests(test_args, verbosity=kwargs.get('verbosity', 2), interactive=kwargs.get('interactive', False), failfast=kwargs.get('failfast'))
-    sys.exit(failures)
-
-if __name__ == '__main__':
-    parser = OptionParser()
-    parser.add_option('--failfast', action='store_true', default=False, dest='failfast')
-
-    (options, args) = parser.parse_args()
-
-    runtests(failfast=options.failfast, *args)
+if __name__ == "__main__":
+    os.environ['DJANGO_SETTINGS_MODULE'] = 'example.settings'
+    django.setup()
+    TestRunner = get_runner(settings)
+    test_runner = TestRunner()
+    failures = test_runner.run_tests(["registration"])
+    sys.exit(bool(failures))
