@@ -4,6 +4,7 @@ from django.contrib import admin
 from registration import models
 from registration import get_site
 
+
 class RegistrationAdmin(admin.ModelAdmin):
     actions = ('activate_users', 'resend_activation_email')
     list_display = ('user', 'activation_key_expired')

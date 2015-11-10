@@ -8,6 +8,7 @@ from registration import forms
 from registration import models
 from registration import get_site
 
+
 class Register(FormView):
     template_name = 'registration/register.html'
     form_class = forms.RegistrationForm
@@ -27,11 +28,14 @@ class Register(FormView):
         )
         return super(Register, self).form_valid(form)
 
+
 class RegistrationComplete(TemplateView):
     template_name = 'registration/registration_complete.html'
 
+
 class ActivationComplete(TemplateView):
     template_name = 'registration/activation_complete.html'
+
 
 class Activate(TemplateView):
     template_name = 'registration/activation_failed.html'

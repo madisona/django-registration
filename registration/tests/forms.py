@@ -4,6 +4,7 @@ from django.contrib.admin.models import User
 
 from registration import forms
 
+
 class RegistrationFormTests(test.TestCase):
 
     def test_requires_username_to_be_unique(self):
@@ -28,4 +29,3 @@ class RegistrationFormTests(test.TestCase):
         self.failIf(registration_form.is_valid())
         self.assertEqual(["Passwords must match."],
                          registration_form.errors['__all__'])
-

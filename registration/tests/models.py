@@ -8,6 +8,7 @@ from django.contrib.auth.models import User
 
 from registration import models
 
+
 class RegistrationManagerTests(test.TestCase):
 
     def setUp(self):
@@ -112,6 +113,7 @@ class RegistrationManagerTests(test.TestCase):
         all_mock.return_value = [profile]
         models.RegistrationProfile.objects.delete_expired_users()
         self.assertFalse(user.delete.called)
+
 
 class RegistrationProfileModelTests(test.TestCase):
 

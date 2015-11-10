@@ -4,7 +4,9 @@ from django.conf.urls.defaults import patterns, url
 from registration import views
 from registration import auth_urls
 
-registration_urls = patterns('',
+
+registration_urls = patterns(
+    '',
     url(r'^register/$', views.Register.as_view(), name='registration_register'),
     url(r'^register/complete/$', views.RegistrationComplete.as_view(), name='registration_complete'),
     url(r'^activate/complete/$', views.ActivationComplete.as_view(), name='registration_activation_complete'),

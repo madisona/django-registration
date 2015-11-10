@@ -6,6 +6,7 @@ from django.core.urlresolvers import reverse
 
 from registration import forms
 
+
 class RegisterTests(test.TestCase):
 
     def test_accesses_page_successfully(self):
@@ -42,6 +43,7 @@ class RegisterTests(test.TestCase):
         self.assertEqual(((data['username'], data['password1'], data['email'], get_site.return_value), {}),
                          manager.create_inactive_user.call_args)
 
+
 class RegistrationCompleteTests(test.TestCase):
 
     def test_accesses_page_successfully(self):
@@ -51,6 +53,7 @@ class RegistrationCompleteTests(test.TestCase):
     def test_renders_to_correct_template(self):
         response = self.client.get(reverse("registration_complete"))
         self.assertTemplateUsed(response, "registration/registration_complete.html")
+
 
 class ActivateTests(test.TestCase):
 

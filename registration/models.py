@@ -9,6 +9,7 @@ from django.conf import settings
 from django.template.loader import render_to_string
 from django.contrib.auth.models import User
 
+
 class RegistrationManager(models.Manager):
     """Provides shortcuts to account creation and activation"""
 
@@ -60,7 +61,6 @@ class RegistrationManager(models.Manager):
         salt = sha1(str(random.random())).hexdigest()[:5]
         activation_key = sha1(salt + user.username).hexdigest()
         return self.create(user=user, activation_key=activation_key)
-
 
 
 class RegistrationProfile(models.Model):
