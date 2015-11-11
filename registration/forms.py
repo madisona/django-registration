@@ -4,8 +4,10 @@ from django.contrib.auth import get_user_model
 
 
 class RegistrationForm(forms.Form):
-    username = forms.RegexField(regex=r'^\w+$', max_length=30,
-                                error_messages={'invalid': 'This value must contain only letters, numbers, and underscores.'})
+    username = forms.RegexField(regex=r'^[\w.@+-]+$', max_length=30,
+                                error_messages={'invalid': 'Enter a valid username. '
+                                                           'This value may contain only letters, numbers '
+                                                           'and @/./+/-/_ characters.'})
     email = forms.EmailField(max_length=75)
     password1 = forms.CharField(widget=forms.PasswordInput())
     password2 = forms.CharField(widget=forms.PasswordInput())
