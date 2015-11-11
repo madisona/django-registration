@@ -10,7 +10,7 @@ TEST_REQUIREMENTS = [
 README = os.path.join(os.path.dirname(__file__), 'README')
 setup(
     name="django-registration-gv",
-    version="0.2.0",
+    version="0.2.1",
     author="Aaron Madison",
     description="Django registration app",
     url="https://github.com/madisona/django-registration",
