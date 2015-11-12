@@ -1,7 +1,5 @@
 
-from django.contrib.sites import models as site_models
-
-VERSION = (0, 1, 0)
+VERSION = (0, 2, 1)
 
 
 def get_version():
@@ -12,8 +10,5 @@ def get_version():
 
 
 def get_site(request):
-    if site_models.Site._meta.installed:
-        site = site_models.Site.objects.get_current()
-    else:
-        site = site_models.RequestSite(request)
-    return site
+    from django.contrib.sites import models as site_models
+    return site_models.RequestSite(request)
