@@ -6,8 +6,9 @@ from hashlib import sha1
 from django.db import models
 from django.db import transaction
 from django.conf import settings
+from django.contrib.auth import get_user_model
 from django.template.loader import render_to_string
-from django.contrib.auth.models import User
+from django.utils.timezone import now as utc_now
 
 
 class RegistrationManager(models.Manager):
@@ -24,7 +25,9 @@ class RegistrationManager(models.Manager):
         return new_user
 
     def activate_user(self, activation_key):
-        """returns user object if successful, otherwise returns false"""
+        """
+        returns user object if successful, otherwise returns false
+        """
         try:
             profile = self.get(activation_key=activation_key)
         except self.model.DoesNotExist:
@@ -36,11 +39,12 @@ class RegistrationManager(models.Manager):
         return False
 
     def delete_expired_users(self):
-        for profile in self.all():
+        """
+        Deletes inactive users with expired profiles.
+        """
+        for profile in self.filter(user__is_active=False).exclude(activation_key=RegistrationProfile.ACTIVATED):
             if profile.activation_key_expired():
-                user = profile.user
-                if not user.is_active:
-                    user.delete()
+                profile.user.delete()
 
     def _do_activate_user(self, user):
         user.is_active = True
@@ -52,7 +56,7 @@ class RegistrationManager(models.Manager):
         profile.save()
 
     def _get_new_inactive_user(self, username, password, email):
-        new_user = User.objects.create_user(username, email, password)
+        new_user = get_user_model().objects.create_user(username, email, password)
         new_user.is_active = False
         new_user.save()
         return new_user
@@ -67,6 +71,7 @@ class RegistrationProfile(models.Model):
     ACTIVATED = u"ALREADY_ACTIVATED"
     activation_subject_template_name = "registration/activation_email_subject.txt"
     activation_template_name = "registration/activation_email.txt"
+    activation_html_template_name = "registration/activation_email.html"
 
     user = models.OneToOneField(settings.AUTH_USER_MODEL)
     activation_key = models.CharField(max_length=40)
@@ -78,21 +83,21 @@ class RegistrationProfile(models.Model):
 
     def activation_key_expired(self):
         expiration_date = datetime.timedelta(days=settings.ACCOUNT_ACTIVATION_DAYS)
-        return self.activation_key == self.ACTIVATED or \
-               (self.user.date_joined + expiration_date <= datetime.datetime.now())
+        return self.activation_key == self.ACTIVATED or self.user.date_joined + expiration_date <= utc_now()
 
     def send_activation_email(self, current_site):
         subject = self._get_activation_subject(current_site)
-        message = self._get_activation_message(current_site)
+        message = self._get_activation_message(current_site, self.activation_template_name)
+        html_message = self._get_activation_message(current_site, self.activation_html_template_name)
 
-        self.user.email_user(subject, message, settings.DEFAULT_FROM_EMAIL)
+        self.user.email_user(subject, message, settings.DEFAULT_FROM_EMAIL, html_message=html_message)
 
     def _get_activation_subject(self, site):
         subject = render_to_string(self.activation_subject_template_name, {'site': site})
         return ''.join(subject.splitlines())
 
-    def _get_activation_message(self, site):
-        return render_to_string(self.activation_template_name, {
+    def _get_activation_message(self, site, template_name):
+        return render_to_string(template_name, {
             'site': site,
             'activation_key': self.activation_key,
             'expiration_days': settings.ACCOUNT_ACTIVATION_DAYS,

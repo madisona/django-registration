@@ -1,10 +1,11 @@
 
 import datetime
-from mock import patch, Mock
 
 from django import test
 from django.conf import settings
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
+from django.core import mail
+from django.utils import timezone
 
 from registration import models
 
@@ -12,7 +13,7 @@ from registration import models
 class RegistrationManagerTests(test.TestCase):
 
     def setUp(self):
-        self.user = User.objects.create_user("aaron", "secret", "aaron@example.com")
+        self.user = get_user_model().objects.create_user("aaron", "secret", "aaron@example.com")
 
     def test_creates_profile(self):
         models.RegistrationProfile.objects._create_profile(self.user)
@@ -22,97 +23,81 @@ class RegistrationManagerTests(test.TestCase):
         user = models.RegistrationProfile.objects._get_new_inactive_user("adam", "secret", "adam@example.com")
         self.assertFalse(user.is_active)
 
-    @patch("registration.models.RegistrationProfile.objects._get_new_inactive_user")
-    @patch("registration.models.RegistrationProfile.objects._create_profile")
-    def test_creates_user_and_profile(self, create_profile, get_new_inactive_user):
-        user = models.RegistrationProfile.objects.create_inactive_user("adam", "secret", "adam@example.com", Mock())
+    def test_creates_user_and_profile(self):
+        user = models.RegistrationProfile.objects.create_inactive_user("adam", "secret", "adam@example.com", "site")
 
-        self.assertTrue(get_new_inactive_user.called)
-        self.assertEqual(user, get_new_inactive_user.return_value)
-        self.assertEqual([(user,), {}], create_profile.call_args)
+        self.assertEqual("adam", user.username)
+        self.assertEqual("adam@example.com", user.email)
+        self.assertEqual(True, user.check_password("secret"))
+        self.assertIsNotNone(user.registrationprofile.activation_key)
 
-    @patch("registration.models.RegistrationProfile.objects._create_profile")
-    def test_sends_email_if_requested_in_create_inactive_user(self, create_profile):
+    def test_sends_email_if_requested_in_create_inactive_user(self):
         models.RegistrationProfile.objects.create_inactive_user(
-                "adam", "secret", "adam@example.com", Mock(), send_email=True)
+                "adam", "secret", "adam@example.com", "site", send_email=True)
 
-        self.assertTrue(create_profile.return_value.send_activation_email.called)
+        self.assertEqual(1, len(mail.outbox))
 
-    def test_returns_false_if_activation_key_isnt_found(self):
+    def test_doesnt_send_email_if_requested_in_create_inactive_user(self):
+        models.RegistrationProfile.objects.create_inactive_user(
+                "adam", "secret", "adam@example.com", "site", send_email=False)
+
+        self.assertEqual(0, len(mail.outbox))
+
+    def test_returns_false_when_activation_key_isnt_found(self):
         user = models.RegistrationProfile.objects.activate_user("key")
         self.assertEqual(user, False)
 
-    @patch("registration.models.RegistrationProfile.objects.get")
-    def test_returns_false_if_activation_key_is_expired(self, get_mock):
-        get_mock.return_value.activation_key_expired.return_value = True
+    def test_returns_false_if_activation_key_is_expired(self):
+        user = models.RegistrationProfile.objects.create_inactive_user(
+            "adam", "secret", "adam@example.com", "site", send_email=False)
 
-        user = models.RegistrationProfile.objects.activate_user(Mock())
-        self.assertEqual(user, False)
+        with self.settings(ACCOUNT_ACTIVATION_DAYS=0):
+            activation_key = user.registrationprofile.activation_key
+            activated_user = models.RegistrationProfile.objects.activate_user(activation_key)
+        self.assertEqual(activated_user, False)
 
-    def test_sets_active_status_and_saves(self):
-        user = Mock()
-        active_user = models.RegistrationProfile.objects._do_activate_user(user)
+    def test_activates_user(self):
+        user = models.RegistrationProfile.objects.create_inactive_user(
+            "adam", "secret", "adam@example.com", "site", send_email=False)
 
-        self.assertEqual(active_user.is_active, True)
-        self.assertTrue(user.save.called, "didnt save user")
+        activated_user = models.RegistrationProfile.objects.activate_user(user.registrationprofile.activation_key)
 
-    def test_sets_activation_key_and_saves(self):
-        profile = Mock()
-        models.RegistrationProfile.objects._do_activate_profile(profile)
+        updated_user = get_user_model().objects.get(pk=user.pk)
+        self.assertEqual(updated_user, activated_user)
+        self.assertEqual(True, updated_user.is_active)
+        self.assertEqual(models.RegistrationProfile.ACTIVATED, updated_user.registrationprofile.activation_key)
 
-        self.assertEqual(models.RegistrationProfile.ACTIVATED, profile.activation_key)
-        self.assertTrue(profile.save.called, "didnt save profile")
+    @test.override_settings(ACCOUNT_ACTIVATION_DAYS=1)
+    def test_deletes_expired_profiles_profiles(self):
+        # Active user, not activated profile (not expired)
+        user_one = get_user_model().objects.create_user("one")
+        p1 = models.RegistrationProfile.objects.create(user=user_one, activation_key="some-key")
 
-    @patch("registration.models.RegistrationProfile.objects._do_activate_user")
-    @patch("registration.models.RegistrationProfile.objects._do_activate_profile")
-    @patch("registration.models.RegistrationProfile.objects.get")
-    def test_activates_and_returns_user(self, get_mock, do_activate_profile, do_activate_user):
-        profile = get_mock.return_value
-        profile.activation_key_expired.return_value = False
+        # inactive user, expired profile
+        user_two = get_user_model().objects.create(username="two", date_joined=timezone.now() - datetime.timedelta(days=2), is_active=False)
+        models.RegistrationProfile.objects.create(user=user_two, activation_key="some-key")
 
-        active_user = models.RegistrationProfile.objects.activate_user(Mock())
-        self.assertEqual([(profile.user,), {}], do_activate_user.call_args)
-        self.assertEqual([(profile,), {}], do_activate_profile.call_args)
-        self.assertEqual(do_activate_user.return_value, active_user)
+        # active user, activated profile
+        user_three = get_user_model().objects.create(username="three", date_joined=timezone.now() - datetime.timedelta(days=10))
+        p3 = models.RegistrationProfile.objects.create(user=user_three, activation_key=models.RegistrationProfile.ACTIVATED)
 
-    @patch("registration.models.RegistrationProfile.objects.all")
-    def test_deletes_expired_user_if_activation_key_is_expired_and_user_is_not_active(self, all_mock):
-        user = Mock()
-        user.is_active = False
+        # inactive user, profile not yet expired
+        user_four = get_user_model().objects.create(username="four", is_active=False)
+        p4 = models.RegistrationProfile.objects.create(user=user_four, activation_key="some-key")
 
-        profile = Mock()
-        profile.user = user
-        profile.activation_key_expired.return_value = True
+        # inactive user, profile already registered
+        user_five = get_user_model().objects.create(username="five", is_active=False)
+        p5 = models.RegistrationProfile.objects.create(user=user_five, activation_key=models.RegistrationProfile.ACTIVATED)
 
-        all_mock.return_value = [profile]
+        # Active user, not activated profile (already expired)
+        user_six = get_user_model().objects.create(username="six", date_joined=timezone.now() - datetime.timedelta(days=2))
+        p6 = models.RegistrationProfile.objects.create(user=user_six, activation_key="some-key")
+
+        # expect to delete user two.
         models.RegistrationProfile.objects.delete_expired_users()
-        self.assertTrue(user.delete.called)
 
-    @patch("registration.models.RegistrationProfile.objects.all")
-    def test_does_not_delete_user_if_activation_key_has_not_expired(self, all_mock):
-        user = Mock()
-        user.is_active = False
-
-        profile = Mock()
-        profile.user = user
-        profile.activation_key_expired.return_value = False
-
-        all_mock.return_value = [profile]
-        models.RegistrationProfile.objects.delete_expired_users()
-        self.assertFalse(user.delete.called)
-
-    @patch("registration.models.RegistrationProfile.objects.all")
-    def test_does_not_delete_user_if_user_is_active(self, all_mock):
-        user = Mock()
-        user.is_active = True
-
-        profile = Mock()
-        profile.user = user
-        profile.activation_key_expired.return_value = True
-
-        all_mock.return_value = [profile]
-        models.RegistrationProfile.objects.delete_expired_users()
-        self.assertFalse(user.delete.called)
+        remaining_profiles = models.RegistrationProfile.objects.all().order_by("user__pk")
+        self.assertQuerysetEqual(remaining_profiles, [repr(p) for p in [p1, p3, p4, p5, p6]])
 
 
 class RegistrationProfileModelTests(test.TestCase):
@@ -121,18 +106,18 @@ class RegistrationProfileModelTests(test.TestCase):
         self.sample_user = models.RegistrationProfile.objects.create_inactive_user(
             "alice",
             "secret",
-            "alice@example.com", Mock(),
+            "alice@example.com", "site", send_email=False,
         )
         self.expired_user = models.RegistrationProfile.objects.create_inactive_user(
             "bob",
             "secret",
-            "bob@example.com", Mock(),
+            "bob@example.com", "site", send_email=False
         )
         self.expired_user.date_joined -= datetime.timedelta(days=settings.ACCOUNT_ACTIVATION_DAYS + 1)
         self.expired_user.save()
 
     def test_uses_user_in_string_representation(self):
-        user = User.objects.create_user("aaron", "secret", "aaron@example.com")
+        user = get_user_model().objects.create_user("aaron", "secret", "aaron@example.com")
         profile = models.RegistrationProfile(user=user)
         self.assertTrue(str(user) in str(profile))
 
@@ -149,58 +134,18 @@ class RegistrationProfileModelTests(test.TestCase):
         profile.activation_key = models.RegistrationProfile.ACTIVATED
         self.assertTrue(profile.activation_key_expired())
 
-    @patch("registration.models.RegistrationProfile._get_activation_message")
-    @patch("registration.models.RegistrationProfile._get_activation_subject")
-    def test_gets_current_site_and_sends_to_get_templates(self, get_subject, get_message):
-        registration_profile = models.RegistrationProfile(user=self.sample_user)
-        current_site = Mock()
-        registration_profile.send_activation_email(current_site)
-        self.assertEqual([(current_site,), {}], get_subject.call_args)
-        self.assertEqual([(current_site,), {}], get_message.call_args)
+    def test_sends_activation_email(self):
+        site = "my-site"
+        profile = self.sample_user.registrationprofile
+        profile.send_activation_email(site)
 
-    @patch('registration.models.User.email_user', Mock())
-    @patch("registration.models.RegistrationProfile._get_activation_message")
-    @patch("registration.models.RegistrationProfile._get_activation_subject")
-    @patch("registration.models.settings")
-    def test_sends_proper_arguments_to_send_mail_command(self, settings_mock, get_subject, get_message):
-        registration_profile = models.RegistrationProfile(user=self.sample_user)
-        registration_profile.send_activation_email(Mock())
-        self.assertEqual([(
-            get_subject.return_value,
-            get_message.return_value,
-            settings_mock.DEFAULT_FROM_EMAIL,
-        ), {}], registration_profile.user.email_user.call_args)
+        self.assertEqual(1, len(mail.outbox))
+        self.assertEqual([self.sample_user.email], mail.outbox[0].to)
+        self.assertEqual(settings.DEFAULT_FROM_EMAIL, mail.outbox[0].from_email)
+        self.assertEqual(profile._get_activation_subject(site), mail.outbox[0].subject)
 
-    @patch("registration.models.render_to_string")
-    def test_renders_email_subject_to_string(self, render_to_string):
-        render_to_string.return_value = "Activation email"
-        site_mock = Mock()
-        subject = models.RegistrationProfile()._get_activation_subject(site_mock)
+        expected_content = profile._get_activation_message(site, profile.activation_template_name)
+        self.assertEqual(expected_content, mail.outbox[0].body)
 
-        self.assertEqual([(
-            models.RegistrationProfile.activation_subject_template_name,
-            {'site': site_mock},
-        ), {}], render_to_string.call_args)
-        self.assertEqual(render_to_string.return_value, subject)
-
-    @patch("registration.models.render_to_string")
-    def test_forces_email_subject_to_be_one_line(self, render_to_string):
-        render_to_string.return_value = "Activation \nemail"
-        subject = models.RegistrationProfile()._get_activation_subject(Mock)
-        self.assertEqual("Activation email", subject)
-
-    @patch("registration.models.settings")
-    @patch("registration.models.render_to_string")
-    def test_renders_email_message_to_string(self, render_to_string, settings_mock):
-        profile = models.RegistrationProfile(activation_key=Mock())
-        current_site = Mock()
-        message = profile._get_activation_message(current_site)
-
-        self.assertEqual([(
-            models.RegistrationProfile.activation_template_name, {
-                'site': current_site,
-                'activation_key': profile.activation_key,
-                'expiration_days': settings_mock.ACCOUNT_ACTIVATION_DAYS,
-             },
-        ), {}], render_to_string.call_args)
-        self.assertEqual(render_to_string.return_value, message)
+        expected_html = profile._get_activation_message(site, profile.activation_html_template_name)
+        self.assertHTMLEqual(expected_html, mail.outbox[0].alternatives[0][0])
