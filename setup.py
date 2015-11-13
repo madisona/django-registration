@@ -4,13 +4,12 @@ from setuptools import setup
 
 TEST_REQUIREMENTS = [
     'django>=1.8',
-    'mock',
 ]
 
 README = os.path.join(os.path.dirname(__file__), 'README')
 setup(
     name="django-registration-gv",
-    version="0.2.1",
+    version="0.3.0",
     author="Aaron Madison",
     description="Django registration app",
     url="https://github.com/madisona/django-registration",
