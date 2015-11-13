@@ -19,13 +19,7 @@ class Register(FormView):
         return reverse("registration_complete")
 
     def form_valid(self, form):
-        # activate user...
-        models.RegistrationProfile.objects.create_inactive_user(
-            form.cleaned_data['username'],
-            form.cleaned_data['password1'],
-            form.cleaned_data['email'],
-            get_site(self.request)
-        )
+        form.create_inactive_user(get_site(self.request))
         return super(Register, self).form_valid(form)
 
 

@@ -1,6 +1,8 @@
 
 from django import test
+from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.core import mail
 
 from registration import forms
 
@@ -50,3 +52,62 @@ class RegistrationFormTests(test.TestCase):
         self.failIf(registration_form.is_valid())
         self.assertEqual(["Passwords must match."],
                          registration_form.errors['__all__'])
+
+
+class RegistrationActivateUserFormTests(test.TestCase):
+
+    def setUp(self):
+        self.sut = forms.RegistrationForm
+        self.form_data = {"username": "user", "password1": "pswd", "password2": "pswd", "email": "test@example.com"}
+
+    def test_creates_user_and_profile(self):
+        form = self.sut(data=self.form_data)
+        form.is_valid()
+        user = form.create_inactive_user("site", send_email=False)
+
+        self.assertEqual(self.form_data['username'], user.username)
+        self.assertEqual(self.form_data['email'], user.email)
+        self.assertEqual(True, user.check_password(self.form_data["password1"]))
+        self.assertIsNotNone(user.registrationprofile.activation_key)
+
+    def test_doesnt_send_email_if_requested_in_create_inactive_user(self):
+        form = self.sut(data=self.form_data)
+        form.is_valid()
+        form.create_inactive_user("site", send_email=False)
+
+        self.assertEqual(0, len(mail.outbox))
+
+    def test_sends_activation_email_in_create_inactive_user(self):
+        site = "my-site"
+        form = self.sut(data=self.form_data)
+        form.is_valid()
+        form.create_inactive_user(site, send_email=True)
+
+        self.assertEqual(1, len(mail.outbox))
+        self.assertEqual([self.form_data['email']], mail.outbox[0].to)
+        self.assertEqual(settings.DEFAULT_FROM_EMAIL, mail.outbox[0].from_email)
+        self.assertEqual(form._get_activation_subject(site), mail.outbox[0].subject)
+
+        expected_content = form._get_activation_message(site, form.activation_template_name)
+        self.assertEqual(expected_content, mail.outbox[0].body)
+
+        expected_html = form._get_activation_message(site, form.activation_html_template_name)
+        self.assertHTMLEqual(expected_html, mail.outbox[0].alternatives[0][0])
+
+    def test_send_activation_email_doesnt_use_html_message_when_no_html_template(self):
+        site = "my-site"
+        form = self.sut(data=self.form_data)
+        form.is_valid()
+
+        form.activation_html_template_name = None
+        form.create_inactive_user(site, send_email=True)
+
+        self.assertEqual(1, len(mail.outbox))
+        self.assertEqual([self.form_data['email']], mail.outbox[0].to)
+        self.assertEqual(settings.DEFAULT_FROM_EMAIL, mail.outbox[0].from_email)
+        self.assertEqual(form._get_activation_subject(site), mail.outbox[0].subject)
+
+        expected_content = form._get_activation_message(site, form.activation_template_name)
+        self.assertEqual(expected_content, mail.outbox[0].body)
+
+        self.assertEqual([], mail.outbox[0].alternatives)

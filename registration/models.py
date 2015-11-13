@@ -7,7 +7,6 @@ from django.db import models
 from django.db import transaction
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.template.loader import render_to_string
 from django.utils.timezone import now as utc_now
 
 
@@ -18,10 +17,7 @@ class RegistrationManager(models.Manager):
     def create_inactive_user(self, username, password, email,
                              site, send_email=True):
         new_user = self._get_new_inactive_user(username, password, email)
-        registration_profile = self._create_profile(new_user)
-
-        if send_email:
-            registration_profile.send_activation_email(site)
+        self._create_profile(new_user)
         return new_user
 
     def activate_user(self, activation_key):
@@ -69,9 +65,6 @@ class RegistrationManager(models.Manager):
 
 class RegistrationProfile(models.Model):
     ACTIVATED = u"ALREADY_ACTIVATED"
-    activation_subject_template_name = "registration/activation_email_subject.txt"
-    activation_template_name = "registration/activation_email.txt"
-    activation_html_template_name = "registration/activation_email.html"
 
     user = models.OneToOneField(settings.AUTH_USER_MODEL)
     activation_key = models.CharField(max_length=40)
@@ -84,21 +77,3 @@ class RegistrationProfile(models.Model):
     def activation_key_expired(self):
         expiration_date = datetime.timedelta(days=settings.ACCOUNT_ACTIVATION_DAYS)
         return self.activation_key == self.ACTIVATED or self.user.date_joined + expiration_date <= utc_now()
-
-    def send_activation_email(self, current_site):
-        subject = self._get_activation_subject(current_site)
-        message = self._get_activation_message(current_site, self.activation_template_name)
-        html_message = self._get_activation_message(current_site, self.activation_html_template_name)
-
-        self.user.email_user(subject, message, settings.DEFAULT_FROM_EMAIL, html_message=html_message)
-
-    def _get_activation_subject(self, site):
-        subject = render_to_string(self.activation_subject_template_name, {'site': site})
-        return ''.join(subject.splitlines())
-
-    def _get_activation_message(self, site, template_name):
-        return render_to_string(template_name, {
-            'site': site,
-            'activation_key': self.activation_key,
-            'expiration_days': settings.ACCOUNT_ACTIVATION_DAYS,
-        })

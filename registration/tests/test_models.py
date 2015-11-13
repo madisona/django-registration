@@ -4,7 +4,6 @@ import datetime
 from django import test
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.core import mail
 from django.utils import timezone
 
 from registration import models
@@ -30,18 +29,6 @@ class RegistrationManagerTests(test.TestCase):
         self.assertEqual("adam@example.com", user.email)
         self.assertEqual(True, user.check_password("secret"))
         self.assertIsNotNone(user.registrationprofile.activation_key)
-
-    def test_sends_email_if_requested_in_create_inactive_user(self):
-        models.RegistrationProfile.objects.create_inactive_user(
-                "adam", "secret", "adam@example.com", "site", send_email=True)
-
-        self.assertEqual(1, len(mail.outbox))
-
-    def test_doesnt_send_email_if_requested_in_create_inactive_user(self):
-        models.RegistrationProfile.objects.create_inactive_user(
-                "adam", "secret", "adam@example.com", "site", send_email=False)
-
-        self.assertEqual(0, len(mail.outbox))
 
     def test_returns_false_when_activation_key_isnt_found(self):
         user = models.RegistrationProfile.objects.activate_user("key")
@@ -133,19 +120,3 @@ class RegistrationProfileModelTests(test.TestCase):
         profile = models.RegistrationProfile.objects.get(user=self.sample_user)
         profile.activation_key = models.RegistrationProfile.ACTIVATED
         self.assertTrue(profile.activation_key_expired())
-
-    def test_sends_activation_email(self):
-        site = "my-site"
-        profile = self.sample_user.registrationprofile
-        profile.send_activation_email(site)
-
-        self.assertEqual(1, len(mail.outbox))
-        self.assertEqual([self.sample_user.email], mail.outbox[0].to)
-        self.assertEqual(settings.DEFAULT_FROM_EMAIL, mail.outbox[0].from_email)
-        self.assertEqual(profile._get_activation_subject(site), mail.outbox[0].subject)
-
-        expected_content = profile._get_activation_message(site, profile.activation_template_name)
-        self.assertEqual(expected_content, mail.outbox[0].body)
-
-        expected_html = profile._get_activation_message(site, profile.activation_html_template_name)
-        self.assertHTMLEqual(expected_html, mail.outbox[0].alternatives[0][0])
