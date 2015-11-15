@@ -14,8 +14,7 @@ class RegistrationManager(models.Manager):
     """Provides shortcuts to account creation and activation"""
 
     @transaction.atomic
-    def create_inactive_user(self, username, password, email,
-                             site, send_email=True):
+    def create_inactive_user(self, username, password, email, site):
         new_user = self._get_new_inactive_user(username, password, email)
         self._create_profile(new_user)
         return new_user
