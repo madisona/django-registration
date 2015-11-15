@@ -12,7 +12,7 @@ from registration import get_site
 class Register(FormView):
     template_name = 'registration/register.html'
     form_class = forms.RegistrationForm
-    
+
     def get_success_url(self):
         if self.success_url:
             return self.success_url

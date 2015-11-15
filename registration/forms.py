@@ -67,7 +67,7 @@ class RegistrationForm(ActivateUserMixin, forms.Form):
         user_model = get_user_model()
         try:
             username_lookup = "{}__iexact".format(user_model.USERNAME_FIELD)
-            _ = user_model.objects.get(**{username_lookup: self.cleaned_data['username']})
+            user_model.objects.get(**{username_lookup: self.cleaned_data['username']})
         except user_model.DoesNotExist:
             return self.cleaned_data['username']
         raise forms.ValidationError("Username '%(username)s' is not available." % self.cleaned_data)
