@@ -1,6 +1,8 @@
 
 import os
-from setuptools import setup
+from setuptools import setup, find_packages
+
+from registration import get_version
 
 TEST_REQUIREMENTS = [
     'django>=1.8',
@@ -9,12 +11,12 @@ TEST_REQUIREMENTS = [
 README = os.path.join(os.path.dirname(__file__), 'README')
 setup(
     name="django-registration-gv",
-    version="0.3.3",
+    version=get_version(),
     author="Aaron Madison",
     description="Django registration app",
     url="https://github.com/madisona/django-registration",
     test_suite='runtests.runtests',
-    packages=('registration',),
+    packages=find_packages(exclude=["example"]),
     include_package_data=True,
     tests_require=TEST_REQUIREMENTS,
     classifiers=[

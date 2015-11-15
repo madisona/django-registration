@@ -1,12 +1,9 @@
 
-VERSION = (0, 3, 3)
+VERSION = (0, 3, 4)
 
 
 def get_version():
-    version = '%s.%s' % (VERSION[0], VERSION[1])
-    if VERSION[2]:
-        version = '%s.%s' % (version, VERSION[2])
-    return version
+    return ".".join(str(v) for v in VERSION)
 
 
 def get_site(request):
