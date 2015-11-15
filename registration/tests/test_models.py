@@ -23,7 +23,7 @@ class RegistrationManagerTests(test.TestCase):
         self.assertFalse(user.is_active)
 
     def test_creates_user_and_profile(self):
-        user = models.RegistrationProfile.objects.create_inactive_user("adam", "secret", "adam@example.com", "site")
+        user = models.RegistrationProfile.objects.create_inactive_user("adam", "secret", "adam@example.com")
 
         self.assertEqual("adam", user.username)
         self.assertEqual("adam@example.com", user.email)
@@ -36,7 +36,7 @@ class RegistrationManagerTests(test.TestCase):
 
     def test_returns_false_if_activation_key_is_expired(self):
         user = models.RegistrationProfile.objects.create_inactive_user(
-            "adam", "secret", "adam@example.com", "site")
+            "adam", "secret", "adam@example.com")
 
         with self.settings(ACCOUNT_ACTIVATION_DAYS=0):
             activation_key = user.registrationprofile.activation_key
@@ -45,7 +45,7 @@ class RegistrationManagerTests(test.TestCase):
 
     def test_activates_user(self):
         user = models.RegistrationProfile.objects.create_inactive_user(
-            "adam", "secret", "adam@example.com", "site")
+            "adam", "secret", "adam@example.com")
 
         activated_user = models.RegistrationProfile.objects.activate_user(user.registrationprofile.activation_key)
 
@@ -93,12 +93,12 @@ class RegistrationProfileModelTests(test.TestCase):
         self.sample_user = models.RegistrationProfile.objects.create_inactive_user(
             "alice",
             "secret",
-            "alice@example.com", "site"
+            "alice@example.com",
         )
         self.expired_user = models.RegistrationProfile.objects.create_inactive_user(
             "bob",
             "secret",
-            "bob@example.com", "site"
+            "bob@example.com",
         )
         self.expired_user.date_joined -= datetime.timedelta(days=settings.ACCOUNT_ACTIVATION_DAYS + 1)
         self.expired_user.save()

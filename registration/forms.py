@@ -23,7 +23,6 @@ class ActivateUserMixin(object):
             self.cleaned_data['username'],
             self.cleaned_data['password1'],
             self.cleaned_data['email'],
-            site
         )
         if send_email:
             self.send_activation_email(self.user, site)
