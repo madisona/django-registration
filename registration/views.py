@@ -6,7 +6,6 @@ from django.core.urlresolvers import reverse
 
 from registration import forms
 from registration import models
-from registration import get_site
 
 
 class Register(FormView):
@@ -19,7 +18,7 @@ class Register(FormView):
         return reverse("registration_complete")
 
     def form_valid(self, form):
-        form.create_inactive_user(get_site(self.request))
+        form.create_inactive_user(self.request)
         return super(Register, self).form_valid(form)
 
 

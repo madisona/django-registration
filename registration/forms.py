@@ -3,7 +3,9 @@ from django import forms
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.template.loader import render_to_string
+from django.template import RequestContext
 
+from registration import get_site
 from registration.models import RegistrationProfile
 
 
@@ -15,9 +17,10 @@ class ActivateUserMixin(object):
     activation_template_name = "registration/email/activation_email.txt"
     activation_html_template_name = "registration/email/activation_email.html"
 
-    def create_inactive_user(self, site, send_email=True):
+    def create_inactive_user(self, request=None, send_email=True):
         """
         Creates the inactive user and sends activation email. Only call when form is valid.
+        Request object is for RequestContext and current site to send to templates.
         """
         self.user = RegistrationProfile.objects.create_inactive_user(
             self.cleaned_data['username'],
@@ -25,10 +28,13 @@ class ActivateUserMixin(object):
             self.cleaned_data['email'],
         )
         if send_email:
-            self.send_activation_email(self.user, site)
+            self.request = request
+            self.send_activation_email(self.user)
         return self.user
 
-    def send_activation_email(self, user, current_site):
+    def send_activation_email(self, user):
+        current_site = get_site(self.request)
+
         mail_kwargs = {}
         subject = self._get_activation_subject(current_site)
         message = self._get_activation_message(current_site, self.activation_template_name)
@@ -39,11 +45,11 @@ class ActivateUserMixin(object):
         user.email_user(subject, message, settings.DEFAULT_FROM_EMAIL, **mail_kwargs)
 
     def _get_activation_subject(self, site):
-        subject = render_to_string(self.activation_subject_template_name, {'site': site})
+        subject = render_to_string(self.activation_subject_template_name, {'site': site}, RequestContext(self.request))
         return ''.join(subject.splitlines())
 
     def _get_activation_message(self, site, template_name):
-        return render_to_string(template_name, self.get_email_context(site))
+        return render_to_string(template_name, self.get_email_context(site), RequestContext(self.request))
 
     def get_email_context(self, site):
         return {

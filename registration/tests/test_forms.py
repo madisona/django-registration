@@ -5,6 +5,7 @@ from django.contrib.auth import get_user_model
 from django.core import mail
 
 from registration import forms
+from registration import get_site
 
 
 class RegistrationFormTests(test.TestCase):
@@ -61,9 +62,10 @@ class RegistrationActivateUserFormTests(test.TestCase):
         self.form_data = {"username": "user", "password1": "pswd", "password2": "pswd", "email": "test@example.com"}
 
     def test_creates_user_and_profile(self):
+        request = test.RequestFactory().get("/")
         form = self.sut(data=self.form_data)
         form.is_valid()
-        user = form.create_inactive_user("site", send_email=False)
+        user = form.create_inactive_user(request, send_email=False)
 
         self.assertEqual(self.form_data['username'], user.username)
         self.assertEqual(self.form_data['email'], user.email)
@@ -71,17 +73,20 @@ class RegistrationActivateUserFormTests(test.TestCase):
         self.assertIsNotNone(user.registrationprofile.activation_key)
 
     def test_doesnt_send_email_if_requested_in_create_inactive_user(self):
+        request = test.RequestFactory().get("/")
         form = self.sut(data=self.form_data)
         form.is_valid()
-        form.create_inactive_user("site", send_email=False)
+        form.create_inactive_user(request, send_email=False)
 
         self.assertEqual(0, len(mail.outbox))
 
     def test_sends_activation_email_in_create_inactive_user(self):
-        site = "my-site"
+        request = test.RequestFactory().get("/")
+        site = get_site(request)
+
         form = self.sut(data=self.form_data)
         form.is_valid()
-        form.create_inactive_user(site, send_email=True)
+        form.create_inactive_user(request, send_email=True)
 
         self.assertEqual(1, len(mail.outbox))
         self.assertEqual([self.form_data['email']], mail.outbox[0].to)
@@ -95,12 +100,13 @@ class RegistrationActivateUserFormTests(test.TestCase):
         self.assertHTMLEqual(expected_html, mail.outbox[0].alternatives[0][0])
 
     def test_send_activation_email_doesnt_use_html_message_when_no_html_template(self):
-        site = "my-site"
+        request = test.RequestFactory().get("/")
+        site = get_site(request)
         form = self.sut(data=self.form_data)
         form.is_valid()
 
         form.activation_html_template_name = None
-        form.create_inactive_user(site, send_email=True)
+        form.create_inactive_user(request, send_email=True)
 
         self.assertEqual(1, len(mail.outbox))
         self.assertEqual([self.form_data['email']], mail.outbox[0].to)
