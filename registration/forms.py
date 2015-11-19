@@ -2,6 +2,7 @@
 from django import forms
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.core.urlresolvers import reverse
 from django.template.loader import render_to_string
 from django.template import RequestContext
 
@@ -51,12 +52,22 @@ class ActivateUserMixin(object):
     def _get_activation_message(self, site, template_name):
         return render_to_string(template_name, self.get_email_context(site), RequestContext(self.request))
 
+    def _get_activation_url(self, activation_key):
+        path = reverse("registration_activate", kwargs={"activation_key": activation_key})
+        return "{protocol}://{host}{path}".format(
+            protocol="https" if self.request.is_secure() else "http",
+            host=self.request.get_host(),
+            path=path,
+        )
+
     def get_email_context(self, site):
-        return {
+        activation_key = self.user.registrationprofile.activation_key
+        return dict({
             'site': site,
-            'activation_key': self.user.registrationprofile.activation_key,
+            'activation_key': activation_key,
+            'activation_url': self._get_activation_url(activation_key),
             'expiration_days': settings.ACCOUNT_ACTIVATION_DAYS,
-        }
+        }, **self.cleaned_data)
 
 
 class RegistrationForm(ActivateUserMixin, forms.Form):

@@ -3,6 +3,7 @@ from django import test
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core import mail
+from django.core.urlresolvers import reverse
 
 from registration import forms
 from registration import get_site
@@ -117,3 +118,45 @@ class RegistrationActivateUserFormTests(test.TestCase):
         self.assertEqual(expected_content, mail.outbox[0].body)
 
         self.assertEqual([], mail.outbox[0].alternatives)
+
+    def test_get_email_context(self):
+        request = test.RequestFactory().get("/")
+        site = get_site(request)
+        form = self.sut(data=self.form_data)
+        form.is_valid()
+
+        form.activation_html_template_name = None
+        form.create_inactive_user(request, send_email=True)
+
+        activation_key = form.user.registrationprofile.activation_key
+        activation_path = reverse("registration_activate", kwargs={"activation_key": activation_key})
+        activation_url = "{protocol}://{host}{path}".format(
+            protocol="http", host=request.get_host(), path=activation_path)
+        expected_context = dict({
+            "activation_key": activation_key,
+            "activation_url": activation_url,
+            "expiration_days": settings.ACCOUNT_ACTIVATION_DAYS,
+            "site": site,
+        }, **self.form_data)
+        self.assertEqual(expected_context, form.get_email_context(site))
+
+    def test_get_email_context_when_request_is_secure(self):
+        request = test.RequestFactory().get("/", secure=True)
+        site = get_site(request)
+        form = self.sut(data=self.form_data)
+        form.is_valid()
+
+        form.activation_html_template_name = None
+        form.create_inactive_user(request, send_email=True)
+
+        activation_key = form.user.registrationprofile.activation_key
+        activation_path = reverse("registration_activate", kwargs={"activation_key": activation_key})
+        activation_url = "{protocol}://{host}{path}".format(
+            protocol="https", host=request.get_host(), path=activation_path)
+        expected_context = dict({
+            "activation_key": activation_key,
+            "activation_url": activation_url,
+            "expiration_days": settings.ACCOUNT_ACTIVATION_DAYS,
+            "site": site,
+        }, **self.form_data)
+        self.assertEqual(expected_context, form.get_email_context(site))
