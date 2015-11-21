@@ -18,15 +18,24 @@ class ActivateUserMixin(object):
     activation_template_name = "registration/email/activation_email.txt"
     activation_html_template_name = "registration/email/activation_email.html"
 
+    def _get_user_username(self):
+        return self.cleaned_data['username']
+
+    def _get_user_email(self):
+        return self.cleaned_data['email']
+
+    def _get_user_password(self):
+        return self.cleaned_data['password1']
+
     def create_inactive_user(self, request=None, send_email=True):
         """
         Creates the inactive user and sends activation email. Only call when form is valid.
         Request object is for RequestContext and current site to send to templates.
         """
         self.user = RegistrationProfile.objects.create_inactive_user(
-            self.cleaned_data['username'],
-            self.cleaned_data['password1'],
-            self.cleaned_data['email'],
+            self._get_user_username(),
+            self._get_user_password(),
+            self._get_user_email(),
         )
         if send_email:
             self.request = request
