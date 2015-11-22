@@ -7,5 +7,5 @@ def get_version():
 
 
 def get_site(request):
-    from django.contrib.sites import models as site_models
-    return site_models.RequestSite(request)
+    from django.contrib.sites.requests import RequestSite
+    return RequestSite(request)
