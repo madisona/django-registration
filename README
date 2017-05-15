@@ -11,3 +11,5 @@ http://bitbucket.org/ubernostrum/django-registration/overview
 The biggest difference is that I stripped out some stuff I don't find
 immediately beneficial to me (like the internationalization and backends)
 and I implemented the views using class based views new in Django 1.3.
+
+Currently support Django 1.8+ on Python 2 and 3

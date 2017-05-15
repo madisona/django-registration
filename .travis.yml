@@ -3,11 +3,11 @@ python:
   - "2.7"
   - "3.4"
   - "3.5"
+  - "3.6"
 install:
   - pip install -r requirements/test.txt
   - pip install -q Django==$DJANGO_VERSION
 script:
-  - coverage erase
   - coverage run --source=registration example/manage.py test
   - coverage report --show-missing
   - flake8 registration --exclude="*/migrations/*.py"
