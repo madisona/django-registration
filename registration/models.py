@@ -1,4 +1,3 @@
-
 import datetime
 import six
 import random
@@ -38,7 +37,8 @@ class RegistrationManager(models.Manager):
         """
         Deletes inactive users with expired profiles.
         """
-        for profile in self.filter(user__is_active=False).exclude(activation_key=RegistrationProfile.ACTIVATED):
+        for profile in self.filter(user__is_active=False).exclude(
+                activation_key=RegistrationProfile.ACTIVATED):
             if profile.activation_key_expired():
                 profile.user.delete()
 
@@ -52,14 +52,17 @@ class RegistrationManager(models.Manager):
         profile.save()
 
     def _get_new_inactive_user(self, username, password, email):
-        new_user = get_user_model().objects.create_user(username, email, password)
+        new_user = get_user_model().objects.create_user(
+            username, email, password)
         new_user.is_active = False
         new_user.save()
         return new_user
 
     def _create_profile(self, user):
-        salt = sha1(six.text_type(random.random()).encode("utf-8")).hexdigest()[:5]
-        activation_key = sha1(six.text_type(salt + user.username).encode('utf-8')).hexdigest()
+        salt = sha1(
+            six.text_type(random.random()).encode("utf-8")).hexdigest()[:5]
+        activation_key = sha1(
+            six.text_type(salt + user.username).encode('utf-8')).hexdigest()
         return self.create(user=user, activation_key=activation_key)
 
 
@@ -75,5 +78,7 @@ class RegistrationProfile(models.Model):
         return u"Registration information for %s" % self.user
 
     def activation_key_expired(self):
-        expiration_date = datetime.timedelta(days=settings.ACCOUNT_ACTIVATION_DAYS)
-        return self.activation_key == self.ACTIVATED or self.user.date_joined + expiration_date <= utc_now()
+        expiration_date = datetime.timedelta(
+            days=settings.ACCOUNT_ACTIVATION_DAYS)
+        return self.activation_key == self.ACTIVATED or self.user.date_joined + expiration_date <= utc_now(
+        )

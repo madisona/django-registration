@@ -1,4 +1,3 @@
-
 import datetime
 
 from django import test
@@ -10,20 +9,22 @@ from registration import models
 
 
 class RegistrationManagerTests(test.TestCase):
-
     def setUp(self):
-        self.user = get_user_model().objects.create_user("aaron", "secret", "aaron@example.com")
+        self.user = get_user_model().objects.create_user(
+            "aaron", "secret", "aaron@example.com")
 
     def test_creates_profile(self):
         models.RegistrationProfile.objects._create_profile(self.user)
         self.assertEqual(1, models.RegistrationProfile.objects.all().count())
 
     def test_gets_new_inactive_user(self):
-        user = models.RegistrationProfile.objects._get_new_inactive_user("adam", "secret", "adam@example.com")
+        user = models.RegistrationProfile.objects._get_new_inactive_user(
+            "adam", "secret", "adam@example.com")
         self.assertFalse(user.is_active)
 
     def test_creates_user_and_profile(self):
-        user = models.RegistrationProfile.objects.create_inactive_user("adam", "secret", "adam@example.com")
+        user = models.RegistrationProfile.objects.create_inactive_user(
+            "adam", "secret", "adam@example.com")
 
         self.assertEqual("adam", user.username)
         self.assertEqual("adam@example.com", user.email)
@@ -40,71 +41,92 @@ class RegistrationManagerTests(test.TestCase):
 
         with self.settings(ACCOUNT_ACTIVATION_DAYS=0):
             activation_key = user.registrationprofile.activation_key
-            activated_user = models.RegistrationProfile.objects.activate_user(activation_key)
+            activated_user = models.RegistrationProfile.objects.activate_user(
+                activation_key)
         self.assertEqual(activated_user, False)
 
     def test_activates_user(self):
         user = models.RegistrationProfile.objects.create_inactive_user(
             "adam", "secret", "adam@example.com")
 
-        activated_user = models.RegistrationProfile.objects.activate_user(user.registrationprofile.activation_key)
+        activated_user = models.RegistrationProfile.objects.activate_user(
+            user.registrationprofile.activation_key)
 
         updated_user = get_user_model().objects.get(pk=user.pk)
         self.assertEqual(updated_user, activated_user)
         self.assertEqual(True, updated_user.is_active)
-        self.assertEqual(models.RegistrationProfile.ACTIVATED, updated_user.registrationprofile.activation_key)
+        self.assertEqual(models.RegistrationProfile.ACTIVATED,
+                         updated_user.registrationprofile.activation_key)
 
     @test.override_settings(ACCOUNT_ACTIVATION_DAYS=1)
     def test_deletes_expired_profiles_profiles(self):
         # Active user, not activated profile (not expired)
         user_one = get_user_model().objects.create_user("one")
-        p1 = models.RegistrationProfile.objects.create(user=user_one, activation_key="some-key")
+        p1 = models.RegistrationProfile.objects.create(
+            user=user_one, activation_key="some-key")
 
         # inactive user, expired profile
-        user_two = get_user_model().objects.create(username="two", date_joined=timezone.now() - datetime.timedelta(days=2), is_active=False)
-        models.RegistrationProfile.objects.create(user=user_two, activation_key="some-key")
+        user_two = get_user_model().objects.create(
+            username="two",
+            date_joined=timezone.now() - datetime.timedelta(days=2),
+            is_active=False)
+        models.RegistrationProfile.objects.create(
+            user=user_two, activation_key="some-key")
 
         # active user, activated profile
-        user_three = get_user_model().objects.create(username="three", date_joined=timezone.now() - datetime.timedelta(days=10))
-        p3 = models.RegistrationProfile.objects.create(user=user_three, activation_key=models.RegistrationProfile.ACTIVATED)
+        user_three = get_user_model().objects.create(
+            username="three",
+            date_joined=timezone.now() - datetime.timedelta(days=10))
+        p3 = models.RegistrationProfile.objects.create(
+            user=user_three,
+            activation_key=models.RegistrationProfile.ACTIVATED)
 
         # inactive user, profile not yet expired
-        user_four = get_user_model().objects.create(username="four", is_active=False)
-        p4 = models.RegistrationProfile.objects.create(user=user_four, activation_key="some-key")
+        user_four = get_user_model().objects.create(
+            username="four", is_active=False)
+        p4 = models.RegistrationProfile.objects.create(
+            user=user_four, activation_key="some-key")
 
         # inactive user, profile already registered
-        user_five = get_user_model().objects.create(username="five", is_active=False)
-        p5 = models.RegistrationProfile.objects.create(user=user_five, activation_key=models.RegistrationProfile.ACTIVATED)
+        user_five = get_user_model().objects.create(
+            username="five", is_active=False)
+        p5 = models.RegistrationProfile.objects.create(
+            user=user_five,
+            activation_key=models.RegistrationProfile.ACTIVATED)
 
         # Active user, not activated profile (already expired)
-        user_six = get_user_model().objects.create(username="six", date_joined=timezone.now() - datetime.timedelta(days=2))
-        p6 = models.RegistrationProfile.objects.create(user=user_six, activation_key="some-key")
+        user_six = get_user_model().objects.create(
+            username="six",
+            date_joined=timezone.now() - datetime.timedelta(days=2))
+        p6 = models.RegistrationProfile.objects.create(
+            user=user_six, activation_key="some-key")
 
         # expect to delete user two.
         models.RegistrationProfile.objects.delete_expired_users()
 
-        remaining_profiles = models.RegistrationProfile.objects.all().order_by("user__pk")
-        self.assertQuerysetEqual(remaining_profiles, [repr(p) for p in [p1, p3, p4, p5, p6]])
+        remaining_profiles = models.RegistrationProfile.objects.all().order_by(
+            "user__pk")
+        self.assertQuerysetEqual(remaining_profiles,
+                                 [repr(p) for p in [p1, p3, p4, p5, p6]])
 
 
 class RegistrationProfileModelTests(test.TestCase):
-
     def setUp(self):
         self.sample_user = models.RegistrationProfile.objects.create_inactive_user(
             "alice",
             "secret",
-            "alice@example.com",
-        )
+            "alice@example.com", )
         self.expired_user = models.RegistrationProfile.objects.create_inactive_user(
             "bob",
             "secret",
-            "bob@example.com",
-        )
-        self.expired_user.date_joined -= datetime.timedelta(days=settings.ACCOUNT_ACTIVATION_DAYS + 1)
+            "bob@example.com", )
+        self.expired_user.date_joined -= datetime.timedelta(
+            days=settings.ACCOUNT_ACTIVATION_DAYS + 1)
         self.expired_user.save()
 
     def test_uses_user_in_string_representation(self):
-        user = get_user_model().objects.create_user("aaron", "secret", "aaron@example.com")
+        user = get_user_model().objects.create_user("aaron", "secret",
+                                                    "aaron@example.com")
         profile = models.RegistrationProfile(user=user)
         self.assertTrue(str(user) in str(profile))
 
@@ -113,7 +135,8 @@ class RegistrationProfileModelTests(test.TestCase):
         self.assertFalse(profile.activation_key_expired())
 
     def test_is_expired_if_expiration_date_has_passed(self):
-        profile = models.RegistrationProfile.objects.get(user=self.expired_user)
+        profile = models.RegistrationProfile.objects.get(
+            user=self.expired_user)
         self.assertTrue(profile.activation_key_expired())
 
     def test_is_expired_if_already_activated(self):

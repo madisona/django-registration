@@ -1,4 +1,3 @@
-
 from django import http
 from django.views.generic import TemplateView
 from django.views.generic.edit import FormView
@@ -34,7 +33,9 @@ class Activate(TemplateView):
     template_name = 'registration/activation_failed.html'
 
     def get(self, request, *args, **kwargs):
-        new_user = models.RegistrationProfile.objects.activate_user(kwargs['activation_key'])
+        new_user = models.RegistrationProfile.objects.activate_user(
+            kwargs['activation_key'])
         if new_user:
-            return http.HttpResponseRedirect(reverse("registration_activation_complete"))
+            return http.HttpResponseRedirect(
+                reverse("registration_activation_complete"))
         return super(Activate, self).get(request, *args, **kwargs)
