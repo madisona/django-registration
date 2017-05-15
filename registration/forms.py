@@ -11,9 +11,10 @@ from registration.models import RegistrationProfile
 
 class ActivateUserMixin(object):
     """
-    Prepares and send the activation email user's receive to complete their account setup.
+    Prepares and send the activation email user's receive to
+    complete their account setup.
     """
-    activation_subject_template_name = "registration/email/activation_email_subject.txt"
+    activation_subject_template_name = "registration/email/activation_email_subject.txt"  # noqa: E501
     activation_template_name = "registration/email/activation_email.txt"
     activation_html_template_name = "registration/email/activation_email.html"
 
@@ -28,8 +29,9 @@ class ActivateUserMixin(object):
 
     def create_inactive_user(self, request=None, send_email=True):
         """
-        Creates the inactive user and sends activation email. Only call when form is valid.
-        Request object is for RequestContext and current site to send to templates.
+        Creates the inactive user and sends activation email. Only call
+        when form is valid. Request object is for RequestContext and current
+        site to send to templates.
         """
         self.user = RegistrationProfile.objects.create_inactive_user(
             self._get_user_username(),
@@ -114,8 +116,10 @@ class RegistrationForm(ActivateUserMixin, forms.Form):
             "Username '%(username)s' is not available." % self.cleaned_data)
 
     def clean(self):
-        if 'password1' in self.cleaned_data and 'password2' in self.cleaned_data:
-            if self.cleaned_data['password1'] != self.cleaned_data['password2']:
-                raise forms.ValidationError("Passwords must match.")
+        password1 = self.cleaned_data.get('password1')
+        password2 = self.cleaned_data.get('password2')
+        if password1 is not None and password2 is not None \
+                and password1 != password2:
+            raise forms.ValidationError("Passwords must match.")
 
         return self.cleaned_data

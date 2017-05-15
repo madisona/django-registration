@@ -72,7 +72,7 @@ class ActivateTests(test.TestCase):
         self.assertTemplateUsed(response,
                                 "registration/activation_failed.html")
 
-    def test_activates_user_and_redirects_to_activation_complete_page_when_key_is_valid(
+    def test_activates_user_when_key_is_valid(
             self):
         user = RegistrationProfile.objects.create_inactive_user(
             "user", "pswd", "user@me.com")

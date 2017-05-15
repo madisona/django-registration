@@ -80,5 +80,5 @@ class RegistrationProfile(models.Model):
     def activation_key_expired(self):
         expiration_date = datetime.timedelta(
             days=settings.ACCOUNT_ACTIVATION_DAYS)
-        return self.activation_key == self.ACTIVATED or self.user.date_joined + expiration_date <= utc_now(
-        )
+        return (self.activation_key == self.ACTIVATED) or \
+               (self.user.date_joined + expiration_date <= utc_now())

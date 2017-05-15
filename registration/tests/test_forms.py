@@ -44,7 +44,7 @@ class RegistrationFormTests(test.TestCase):
             'and @/./+/-/_ characters.'
         ], registration_form.errors['username'])
 
-    def test_allows_email_addresses_underscores_periods_and_plusses_in_username(
+    def test_allows_email_underscores_periods_and_plusses_in_username(
             self):
         registration_form = forms.RegistrationForm({
             "username":
@@ -127,7 +127,7 @@ class RegistrationActivateUserFormTests(test.TestCase):
             site, form.activation_html_template_name)
         self.assertHTMLEqual(expected_html, mail.outbox[0].alternatives[0][0])
 
-    def test_send_activation_email_doesnt_use_html_message_when_no_html_template(
+    def test_send_activation_email_doesnt_use_html_when_no_html_template(
             self):
         request = test.RequestFactory().get("/")
         site = get_site(request)
