@@ -1,5 +1,6 @@
 
 import datetime
+import six
 import random
 from hashlib import sha1
 
@@ -57,8 +58,8 @@ class RegistrationManager(models.Manager):
         return new_user
 
     def _create_profile(self, user):
-        salt = sha1(str(random.random())).hexdigest()[:5]
-        activation_key = sha1(salt + user.username).hexdigest()
+        salt = sha1(six.text_type(random.random()).encode("utf-8")).hexdigest()[:5]
+        activation_key = sha1(six.text_type(salt + user.username).encode('utf-8')).hexdigest()
         return self.create(user=user, activation_key=activation_key)
 
 
@@ -70,7 +71,7 @@ class RegistrationProfile(models.Model):
 
     objects = RegistrationManager()
 
-    def __unicode__(self):
+    def __str__(self):
         return u"Registration information for %s" % self.user
 
     def activation_key_expired(self):
