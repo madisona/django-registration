@@ -1,3 +1,8 @@
+Django Registration
+-------------------
+
+.. image:: https://travis-ci.org/madisona/django-registration.svg?branch=master
+    :target: https://travis-ci.org/madisona/django-registration
 
 To use:
 download the source, start a new virtualenv
