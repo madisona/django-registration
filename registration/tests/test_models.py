@@ -31,6 +31,18 @@ class RegistrationManagerTests(test.TestCase):
         self.assertEqual(True, user.check_password("secret"))
         self.assertIsNotNone(user.registrationprofile.activation_key)
 
+    def test_allows_other_user_attributes_at_initial_creation(self):
+        user = RegistrationProfile.objects.create_inactive_user(
+            "adam",
+            "secret",
+            "adam@example.com",
+            first_name="Adam",
+            last_name="Sample")
+
+        self.assertEqual("Adam", user.first_name)
+        self.assertEqual("Sample", user.last_name)
+        self.assertIsNotNone(user.registrationprofile.activation_key)
+
     def test_returns_false_when_activation_key_isnt_found(self):
         user = RegistrationProfile.objects.activate_user("key")
         self.assertEqual(user, False)
