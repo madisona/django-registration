@@ -14,8 +14,9 @@ class RegistrationManager(models.Manager):
     """Provides shortcuts to account creation and activation"""
 
     @transaction.atomic
-    def create_inactive_user(self, username, password, email):
-        new_user = self._get_new_inactive_user(username, password, email)
+    def create_inactive_user(self, username, password, email, **kwargs):
+        new_user = self._get_new_inactive_user(username, password, email,
+                                               **kwargs)
         self._create_profile(new_user)
         return new_user
 
@@ -51,16 +52,16 @@ class RegistrationManager(models.Manager):
         profile.activation_key = self.model.ACTIVATED
         profile.save()
 
-    def _get_new_inactive_user(self, username, password, email):
+    def _get_new_inactive_user(self, username, password, email, **kwargs):
         new_user = get_user_model().objects.create_user(
-            username, email, password)
+            username, email, password, **kwargs)
         new_user.is_active = False
         new_user.save()
         return new_user
 
     def _create_profile(self, user):
-        salt = sha1(
-            six.text_type(random.random()).encode("utf-8")).hexdigest()[:5]
+        salt = sha1(six.text_type(
+            random.random()).encode("utf-8")).hexdigest()[:5]
         activation_key = sha1(
             six.text_type(salt + user.username).encode('utf-8')).hexdigest()
         return self.create(user=user, activation_key=activation_key)
